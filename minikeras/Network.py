@@ -15,7 +15,8 @@ class DenseNetwork(object):
     # References
         - [Neural Networks and Deep Learning](http://neuralnetworksanddeeplearning.com/)
     """
-    def __init__(self, layers, sigma=ReLu, sigmaprime=ReLuprime):
+    def __init__(self, layers, sigma=ReLu, sigmaprime=ReLuprime, learning_rate=0.01):
+        self.learning_rate = learning_rate
         self.L = len(layers)
         self.sigma = sigma
         self.sigmaprime = sigmaprime
@@ -31,6 +32,10 @@ class DenseNetwork(object):
             activation = self.sigma(np.dot(w, activation) + b)
         return activation
     
+    def evaluate(self, x):
+        a = self.propagate(x)
+        return np.argmax(a)
+
     def backpropagate(self, x, y):
         delCW = [np.zeros(w.shape) for w in self.weights]
         delCB = [np.zeros(b.shape) for b in self.biases]
@@ -46,7 +51,7 @@ class DenseNetwork(object):
 
         delta = (a - y) * self.sigmaprime(z) 
         delCW[-1] = np.dot(delta, A[-2].T)
-        delCB[-1] = delta.sum(axis=1, keepdims=True)
+        delCB[-1] = delta.sum(axis=1, keepdims=True) / delta.shape[1]
 
         for l in range(2, self.L):
             delta = np.dot(self.weights[-l+1].T, delta) * self.sigmaprime(Z[-l])
@@ -56,7 +61,7 @@ class DenseNetwork(object):
         return delCW, delCB
     
     def SGD(self, X, Y):
-        lr = 0.01 # learning rate
+        lr = self.learning_rate
         for x, y in zip(X, Y):
             delCW, delCB = self.backpropagate(x, y)
             self.weights = [w - dw * lr for w, dw in zip(self.weights, delCW)]
@@ -66,13 +71,13 @@ class DenseNetwork(object):
 if __name__ == '__main__':
     '''
         Basic test showing network learning the function
-        f(x) = np.zeros(3,1)
+        f(x) = np.ones(3,1)
     '''
 
-    net = DenseNetwork([2, 5, 3])
-    batch_size = 1000
+    net = DenseNetwork([2, 12, 13, 3], learning_rate=0.001)
+    batch_size = 1
     x = np.random.rand(2, batch_size)
-    y = np.zeros((3, batch_size))
+    y = np.ones((3, batch_size))
 
     print '---before training---'
     xrand = np.array([[3]
@@ -80,15 +85,14 @@ if __name__ == '__main__':
     print 'f({}) = \n {}'.format(xrand, net.propagate(xrand))
 
     print '---training...---'
-    num_epochs = 10
+    num_epochs = 10000
     for epoch in xrange(num_epochs):
-        print 'epoch: {}...'.format(epoch+1)
         net.SGD([x],[y])
 
     print '---after training---'
-    for _ in xrange(1):
-        x = np.random.rand(2,1)
-        print 'f({}) = \n {}'.format(x, net.propagate(x))
+    for _ in xrange(10):
+        x = np.random.rand(2, 1)
+        print 'outputs: {}'.format(net.propagate(x))
 
 
 
